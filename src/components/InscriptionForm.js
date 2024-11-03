@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { createRepeatInscriptions } from 'sats-connect';
 import FeeSelector from './FeeSelector';
 
@@ -9,7 +9,7 @@ function InscriptionForm({ onPayloadChange, onTransactionComplete }) {
 
   const BASE_APP_FEE = 40000;
 
-  const getPayload = () => ({
+  const getPayload = useCallback(() => ({
     network: {
       type: 'Mainnet'
     },
@@ -19,13 +19,13 @@ function InscriptionForm({ onPayloadChange, onTransactionComplete }) {
     appFee: BASE_APP_FEE * repeatCount,
     appFeeAddress: 'bc1pppsq0wf6hpgd9j9fzc5xzzzhundw54ra038hdaae2hrmnu2zyrgqpwzvwd',
     suggestedMinerFeeRate: minerFeeRate || 0
-  });
+  }), [repeatCount, minerFeeRate]);
 
   useEffect(() => {
     if (minerFeeRate !== null) {
       onPayloadChange(getPayload());
     }
-  }, [onPayloadChange, repeatCount, minerFeeRate]);
+  }, [onPayloadChange, getPayload, minerFeeRate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

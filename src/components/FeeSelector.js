@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 function FeeSelector({ onFeeChange, minimumFee }) {
   const [fees, setFees] = useState(null);
@@ -6,23 +6,22 @@ function FeeSelector({ onFeeChange, minimumFee }) {
   const [customFee, setCustomFee] = useState('');
   const [warning, setWarning] = useState('');
 
-  useEffect(() => {
-    fetchFees();
-  }, []);
-
-  const fetchFees = async () => {
+  const fetchFees = useCallback(async () => {
     try {
       const response = await fetch('https://mempool.space/api/v1/fees/recommended');
       const data = await response.json();
       setFees(data);
-      // Set initial fee to medium (halfHourFee) and trigger the callback
       setSelectedFee('medium');
       onFeeChange(data.halfHourFee);
     } catch (error) {
       console.error('Error fetching fees:', error);
       setWarning('Failed to fetch fee rates');
     }
-  };
+  }, [onFeeChange]);
+
+  useEffect(() => {
+    fetchFees();
+  }, [fetchFees]);
 
   const handleFeeTypeChange = (e) => {
     setSelectedFee(e.target.value);
