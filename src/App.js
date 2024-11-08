@@ -9,9 +9,25 @@ const isMobile = () => {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 };
 
+// Mint progress component
+const MintProgress = memo(({ current, total }) => (
+  <div className="mint-progress">
+    <div className="mint-progress-text">
+      {current} / {total} minted
+    </div>
+    <div className="mint-progress-bar-container">
+      <div 
+        className="mint-progress-bar" 
+        style={{ width: `${(current / total) * 100}%` }}
+      />
+    </div>
+  </div>
+));
+
 // Move PreviewSection outside and memoize it
 const PreviewSection = memo(({ isWalletConnected, iframeKey }) => (
   <div className={`preview-section ${isWalletConnected ? 'connected' : ''}`}>
+    <MintProgress current={681} total={888} />
     <div className="preview-frame">
       <iframe
         key={iframeKey}

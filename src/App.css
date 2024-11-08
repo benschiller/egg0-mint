@@ -22,6 +22,7 @@
 .nav-title h1 {
   margin: 0;
   padding: 0;
+  margin-top: -8px;
   font-size: 48px;
   line-height: 54px;
   font-weight: 400;
@@ -118,6 +119,8 @@
 .preview-section {
   max-width: 400px;
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
 }
 
 .preview-frame {
@@ -169,7 +172,7 @@
   font-size: 32px;
   line-height: 36px;
   font-weight: 400;
-  letter-spacing: -0.02em;
+  letter-spacing: 0em;
 }
 
 .mint-summary h3 {
@@ -351,4 +354,31 @@
     width: 300px;
     height: 300px;
   }
+}
+
+/* Add these styles */
+.mint-progress {
+  margin-bottom: 1rem;
+  font-family: 'Share Tech Mono', monospace;
+}
+
+.mint-progress-text {
+  color: #F4900C;
+  font-size: 16px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.mint-progress-bar-container {
+  width: 100%;
+  height: 4px;
+  background: rgba(244, 144, 12, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.mint-progress-bar {
+  height: 100%;
+  background: #F4900C;
+  transition: width 0.3s ease;
 }
