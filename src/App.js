@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, memo } from 'react';
 import WalletConnect from './components/WalletConnect';
 import InscriptionForm from './components/InscriptionForm';
 import PayloadSummary from './components/PayloadSummary';
+import useCollectionSupply from './hooks/useCollectionSupply';
 import './App.css';
 
 // Mobile detection helper
@@ -9,25 +10,25 @@ const isMobile = () => {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 };
 
-// Mint progress component
-const MintProgress = memo(({ current, total }) => (
+// Update MintProgress to handle loading state
+const MintProgress = memo(({ current, total, loading }) => (
   <div className="mint-progress">
     <div className="mint-progress-text">
-      {current} / {total} minted
+      {loading ? 'Loading...' : `${current} / ${total} minted`}
     </div>
     <div className="mint-progress-bar-container">
       <div 
         className="mint-progress-bar" 
-        style={{ width: `${(current / total) * 100}%` }}
+        style={{ width: `${loading ? 0 : (current / total) * 100}%` }}
       />
     </div>
   </div>
 ));
 
-// Move PreviewSection outside and memoize it
-const PreviewSection = memo(({ isWalletConnected, iframeKey }) => (
+// Update PreviewSection to accept supply data
+const PreviewSection = memo(({ isWalletConnected, iframeKey, supply, loading }) => (
   <div className={`preview-section ${isWalletConnected ? 'connected' : ''}`}>
-    <MintProgress current={681} total={888} />
+    <MintProgress current={supply} total={888} loading={loading} />
     <div className="preview-frame">
       <iframe
         key={iframeKey}
@@ -58,6 +59,7 @@ function App() {
   const [payloadSummary, setPayloadSummary] = useState({});
   const [iframeKey, setIframeKey] = useState(0);
   const isMobileDevice = isMobile();
+  const { supply, loading, error } = useCollectionSupply();
 
   const refreshIframe = useCallback(() => {
     setIframeKey(prev => prev + 1);
@@ -113,16 +115,19 @@ function App() {
             <PreviewSection 
               isWalletConnected={false} 
               iframeKey={iframeKey}
+              supply={supply}
+              loading={loading}
             />
             <MobileNotice />
           </div>
         ) : (
-          // Existing desktop layout
           !isWalletConnected ? (
             <div className="preview-container">
               <PreviewSection 
                 isWalletConnected={isWalletConnected} 
                 iframeKey={iframeKey}
+                supply={supply}
+                loading={loading}
               />
             </div>
           ) : (
@@ -131,6 +136,8 @@ function App() {
                 <PreviewSection 
                   isWalletConnected={isWalletConnected} 
                   iframeKey={iframeKey}
+                  supply={supply}
+                  loading={loading}
                 />
               </div>
 
