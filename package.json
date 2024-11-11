@@ -24,7 +24,7 @@
   },
   "scripts": {
     "dev": "concurrently \"npm run postgres\" \"npm run api\" \"npm run monitor\" \"npm run client\"",
-    "start": "/bin/sh -c \"node src/server/index.js & node src/api/server.js & node src/indexer/monitorInscriptions.js\"",
+    "start": "/bin/sh -c \"PORT=3000 node src/server/index.js & PORT=3001 node src/api/server.js & node src/indexer/monitorInscriptions.js\"",
     "postgres": "postgres -D egg0-postgres-data",
     "api": "node src/api/server.js",
     "monitor": "node src/indexer/monitorInscriptions.js",
