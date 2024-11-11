@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const axios = require('axios');
 
 // Load environment variables
 dotenv.config();
@@ -22,6 +23,13 @@ app.use('/api', collectionSupplyRouter);
 if (process.env.NODE_ENV === 'production') {
     app.use(express.static(path.join(__dirname, '../../build')));
     
+    // Proxy API requests to the API server
+    app.use('/api', (req, res) => {
+        axios.get(`http://localhost:3001${req.url}`)
+            .then(response => res.json(response.data))
+            .catch(error => res.status(500).json({ error: error.message }));
+    });
+
     app.get('*', (req, res) => {
         res.sendFile(path.join(__dirname, '../../build', 'index.html'));
     });
