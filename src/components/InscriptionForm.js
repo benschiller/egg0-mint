@@ -29,7 +29,6 @@ function InscriptionForm({ onPayloadChange, onTransactionComplete }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setStatus('Creating inscription...');
 
     try {
       const inscriptionOptions = {
@@ -39,12 +38,12 @@ function InscriptionForm({ onPayloadChange, onTransactionComplete }) {
         },
         onFinish: (response) => {
           console.log('Inscription created successfully:', response);
-          setStatus(`Inscription created! Commit TxID: ${response.commitTxid}`);
+          setStatus('');
           onTransactionComplete(response.commitTxid, response.revealTxid);
         },
         onCancel: () => {
           console.log('Inscription cancelled by user');
-          setStatus('Inscription cancelled');
+          setStatus('');
           onTransactionComplete(null, null);
         },
       };
@@ -52,6 +51,7 @@ function InscriptionForm({ onPayloadChange, onTransactionComplete }) {
       console.log('Inscription options:', inscriptionOptions);
 
       await createRepeatInscriptions(inscriptionOptions);
+      setStatus('');
     } catch (error) {
       console.error('Detailed error creating inscription:', error);
       setStatus(`Error creating inscription: ${error.message}`);

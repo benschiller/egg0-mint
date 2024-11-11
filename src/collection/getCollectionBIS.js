@@ -3,7 +3,7 @@ const axios = require('axios');
 const { BIS_API_BASE_URL, COLLECTION_SLUG } = require('../config');
 
 async function getCollectionInfo() {
-    const apiKey = process.env.BIS_API_KEY;
+    const apiKey = process.env.REACT_APP_BIS_API_KEY;
     const baseUrl = `${BIS_API_BASE_URL}/collection/info`;
 
     try {

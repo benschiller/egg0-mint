@@ -13,11 +13,11 @@ const useCollectionSupply = () => {
     useEffect(() => {
         const fetchSupply = async () => {
             try {
-                const response = await axios.get(`${API_BASE_URL}/api/collection-supply`);
-                setSupply(response.data.supply);
+                const response = await axios.get(`${API_BASE_URL}/api/supply`);
+                setSupply(response.data.total);
                 setLoading(false);
             } catch (error) {
-                console.error('Error fetching collection supply:', error);
+                console.error('Error fetching supply:', error);
                 setError(error.message);
                 setLoading(false);
             }
