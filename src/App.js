@@ -59,7 +59,7 @@ function App() {
   const [payloadSummary, setPayloadSummary] = useState({});
   const [iframeKey, setIframeKey] = useState(0);
   const isMobileDevice = isMobile();
-  const { supply, loading, error } = useCollectionSupply();
+  const { supply, loading } = useCollectionSupply();
 
   const refreshIframe = useCallback(() => {
     setIframeKey(prev => prev + 1);
