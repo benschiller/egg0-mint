@@ -11,19 +11,24 @@ const isMobile = () => {
 };
 
 // Update MintProgress to handle loading state
-const MintProgress = memo(({ current, total, loading }) => (
-  <div className="mint-progress">
-    <div className="mint-progress-text">
-      {loading ? 'Loading...' : `${current} / ${total} minted`}
+const MintProgress = memo(({ current, total, loading }) => {
+  // Calculate percentage with 2 decimal places
+  const percentage = loading ? 0 : ((current / total) * 100).toFixed(2);
+  
+  return (
+    <div className="mint-progress">
+      <div className="mint-progress-text">
+        {loading ? 'Loading...' : `${current} / ${total} minted (${percentage}%)`}
+      </div>
+      <div className="mint-progress-bar-container">
+        <div 
+          className="mint-progress-bar" 
+          style={{ width: `${loading ? 0 : (current / total) * 100}%` }}
+        />
+      </div>
     </div>
-    <div className="mint-progress-bar-container">
-      <div 
-        className="mint-progress-bar" 
-        style={{ width: `${loading ? 0 : (current / total) * 100}%` }}
-      />
-    </div>
-  </div>
-));
+  );
+});
 
 // Update PreviewSection to accept supply data
 const PreviewSection = memo(({ isWalletConnected, iframeKey, supply, loading }) => (
