@@ -1,0 +1,1 @@
+PGPASSWORD=lcnnEUaeqUraQxsQJASzkpPxEfXyHJmi psql -h autorack.proxy.rlwy.net -U postgres -p 56422 -d railway -A -t -c "SELECT array_to_json(array_agg(row_to_json(t))) FROM (SELECT id, meta FROM inscriptions) t;" > export.json

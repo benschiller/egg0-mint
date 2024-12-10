@@ -235,11 +235,19 @@ function startWebSocketConnection() {
 
     ws.on('error', (error) => {
         log('WebSocket error', error);
+        if (error.code === 'ECONNRESET') {
+            log('Connection reset by peer detected');
+        }
     });
 
     ws.on('close', () => {
         log('WebSocket connection closed');
         clearInterval(heartbeat);
+        // Reconnect after a delay
+        setTimeout(() => {
+            log('Attempting to reconnect WebSocket...');
+            startWebSocketConnection();
+        }, 5000);  // Reconnect after 5 seconds
     });
 
     // Add heartbeat to keep connection alive
@@ -247,7 +255,7 @@ function startWebSocketConnection() {
         if (ws.readyState === WebSocket.OPEN) {
             ws.ping();
         }
-    }, 30000);
+    }, 60000);  // Increase to 60 seconds
 
     return ws;
 }
@@ -256,4 +264,4 @@ function startWebSocketConnection() {
 process.on('SIGINT', () => {
     console.log('Shutting down...');
     pool.end().then(() => process.exit(0));
-}); 
+});
