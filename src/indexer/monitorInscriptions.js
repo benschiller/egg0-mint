@@ -114,6 +114,8 @@ async function processInscriptionAddress(address) {
 async function updateDatabase(inscriptionIds) {
     try {
         for (const id of inscriptionIds) {
+            log(`Processing inscription ID: ${id}`);
+
             // Check if inscription already exists
             const exists = await pool.query(
                 'SELECT id FROM inscriptions WHERE id = $1',
@@ -121,27 +123,33 @@ async function updateDatabase(inscriptionIds) {
             );
             
             if (exists.rows.length > 0) {
-                console.log(`Inscription ${id} already exists, skipping`);
+                log(`Inscription ${id} already exists, skipping`);
                 continue;
             }
 
             // Get fresh number before insert
             const nextNumber = await getNextInscriptionNumber();
-            console.log(`Writing inscription ${id} as egg0 #${nextNumber}`);
-            
-            await pool.query(
-                'INSERT INTO inscriptions (id, meta) VALUES ($1, $2)',
-                [
-                    id,
-                    {
-                        name: `egg0 #${nextNumber}`,
-                        high_res_img_url: IMAGE_URL
-                    }
-                ]
-            );
+            log(`Next inscription number: ${nextNumber}`);
+
+            // Prepare the meta data
+            const metaData = {
+                name: `egg0 #${nextNumber}`,
+                high_res_img_url: IMAGE_URL
+            };
+            log(`Meta data for inscription ${id}:`, metaData);
+
+            // Construct the SQL query
+            const queryText = 'INSERT INTO inscriptions (id, meta) VALUES ($1, $2)';
+            const queryValues = [id, metaData];
+            log(`Executing SQL query: ${queryText}`);
+            log(`Query values:`, queryValues);
+
+            // Execute the query
+            await pool.query(queryText, queryValues);
+            log(`Successfully inserted inscription ${id} as egg0 #${nextNumber}`);
         }
     } catch (error) {
-        console.error('Error updating database:', error);
+        log('Error updating database:', error);
     }
 }
 
