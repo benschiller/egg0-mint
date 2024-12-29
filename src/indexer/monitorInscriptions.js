@@ -62,7 +62,8 @@ async function processTransaction(tx) {
 
         return {
             type: hasPlatformFee ? 'batch' : 'direct',
-            addresses: inscriptionAddresses
+            addresses: inscriptionAddresses,
+            hasInscription: tx.vin[0]?.inner_witnessscript_asm?.includes('OP_PUSHBYTES_75 2f636f6e74656e742f6330623464373435346430363538336437636632663935303665343334656363336232303464656264353738613738316564303739303931613731663633326930')
         };
     } catch (error) {
         console.error('Error processing transaction:', error);
@@ -214,7 +215,8 @@ function startWebSocketConnection() {
                     result.addresses.forEach(addr => {
                         pendingTransactions.set(addr, {
                             tx: tx,
-                            type: result.type  // 'direct' or 'batch'
+                            type: result.type,
+                            inscriptionTxid: result.hasInscription ? tx.txid : null
                         });
                     });
                 }
@@ -225,29 +227,20 @@ function startWebSocketConnection() {
                 if (tx.status.confirmed) {
                     log('Processing confirmed transaction:', tx.txid);
                     
-                    // Combined check: Process original transaction and recheck batch addresses
                     for (const [addr, pendingData] of pendingTransactions) {
-                        const isOriginalTx = pendingData.tx.txid === tx.txid;
-                        const shouldCheck = isOriginalTx || pendingData.type === 'batch';
-                        
-                        if (shouldCheck) {
-                            // Log appropriate message based on context
-                            if (isOriginalTx) {
-                                log('Processing address in original block:', addr);
-                            } else {
-                                log('Rechecking batch address in subsequent block:', addr);
-                            }
-
-                            const inscriptions = await processInscriptionAddress(addr);
-                            log('Found inscriptions:', inscriptions);
-                            
-                            if (inscriptions.length > 0) {
-                                log('Updating database with inscriptions:', inscriptions);
-                                await updateDatabase(inscriptions);
+                        if (pendingData.inscriptionTxid === tx.txid) {
+                            // We found a confirmed inscription transaction
+                            const inscriptionId = `${tx.txid}i0`;
+                            log(`Found confirmed inscription: ${inscriptionId}`);
+                            await updateDatabase([inscriptionId]);
+                            pendingTransactions.delete(addr);
+                            log(`Removed address ${addr} after writing inscription`);
+                        } else if (pendingData.tx.txid === tx.txid) {
+                            // Original royalty transaction confirmed
+                            log(`Royalty transaction confirmed for ${addr}`);
+                            if (pendingData.type === 'direct') {
                                 pendingTransactions.delete(addr);
-                                log(`Removed ${pendingData.type} address ${addr} after finding inscriptions`);
-                            } else {
-                                log(`No inscriptions found yet for ${pendingData.type} address ${addr}`);
+                                log(`Removed direct address ${addr} with no inscription`);
                             }
                         }
                     }

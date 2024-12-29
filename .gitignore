@@ -31,3 +31,6 @@ yarn-error.log*
 
 # logs
 captured_logs.json
+
+# database
+/src/indexer/db/*
