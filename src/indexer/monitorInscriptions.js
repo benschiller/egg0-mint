@@ -6,7 +6,7 @@ const config = require('../config');
 // Constants
 const ROYALTY_ADDRESS = config.ROYALTY_ADDRESS;
 const PLATFORM_FEE_ADDRESS = 'bc1pndths0lnsvem2a0n2c6t49u462xam0n4krjl6kpfwn0nknc0cd7qmnxhf8';
-const INSCRIPTION_CONTENT = 'OP_PUSHBYTES_75 2f636f6e74656e742f633330623464373435346430363538336437636632663935303665343334656363336232303464656264353738613738316564303739303931613731663633326930';
+const INSCRIPTION_CONTENT = 'OP_PUSHBYTES_75 2f636f6e74656e742f6330623464373435346430363538336437636632663935303665343334656363336232303464656264353738613738316564303739303931613731663633326930';
 const IMAGE_URL = 'https://i.imgur.com/shyilcA.gif';
 const MEMPOOL_API_BASE = 'https://mempool.space/api';
 
@@ -208,9 +208,12 @@ function startWebSocketConnection() {
                     log(`Found ${result.type} royalty transaction`);
                     log('Storing addresses for confirmation:', result.addresses);
                     
-                    // Store addresses and transaction for later
+                    // Store addresses with transaction and type
                     result.addresses.forEach(addr => {
-                        pendingTransactions.set(addr, tx);
+                        pendingTransactions.set(addr, {
+                            tx: tx,
+                            type: result.type  // 'direct' or 'batch'
+                        });
                     });
                 }
             }
@@ -220,18 +223,30 @@ function startWebSocketConnection() {
                 if (tx.status.confirmed) {
                     log('Processing confirmed transaction:', tx.txid);
                     
-                    // Process any pending addresses for this transaction
-                    for (const [addr, pendingTx] of pendingTransactions) {
-                        if (pendingTx.txid === tx.txid) {
-                            log('Processing confirmed address:', addr);
+                    // Combined check: Process original transaction and recheck batch addresses
+                    for (const [addr, pendingData] of pendingTransactions) {
+                        const isOriginalTx = pendingData.tx.txid === tx.txid;
+                        const shouldCheck = isOriginalTx || pendingData.type === 'batch';
+                        
+                        if (shouldCheck) {
+                            // Log appropriate message based on context
+                            if (isOriginalTx) {
+                                log('Processing address in original block:', addr);
+                            } else {
+                                log('Rechecking batch address in subsequent block:', addr);
+                            }
+
                             const inscriptions = await processInscriptionAddress(addr);
                             log('Found inscriptions:', inscriptions);
                             
                             if (inscriptions.length > 0) {
                                 log('Updating database with inscriptions:', inscriptions);
                                 await updateDatabase(inscriptions);
+                                pendingTransactions.delete(addr);
+                                log(`Removed ${pendingData.type} address ${addr} after finding inscriptions`);
+                            } else {
+                                log(`No inscriptions found yet for ${pendingData.type} address ${addr}`);
                             }
-                            pendingTransactions.delete(addr);
                         }
                     }
                 }
