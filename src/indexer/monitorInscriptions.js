@@ -206,6 +206,16 @@ function startWebSocketConnection() {
                 const tx = message['address-transactions'][0];
                 log('Processing transaction:', tx.txid);
                 
+                // Check if this is a new transaction for an address we're tracking
+                for (const [addr, pendingData] of pendingTransactions) {
+                    if (pendingData.type === 'batch' && 
+                        tx.vin[0]?.inner_witnessscript_asm?.includes('OP_PUSHBYTES_75 2f636f6e74656e742f')) {
+                        log(`Found inscription in transaction: ${tx.txid}`);
+                        pendingData.inscriptionTxid = tx.txid;
+                        log(`Updated inscriptionTxid for address ${addr}`);
+                    }
+                }
+                
                 const result = await processTransaction(tx);
                 if (result) {
                     log(`Found ${result.type} royalty transaction`);
