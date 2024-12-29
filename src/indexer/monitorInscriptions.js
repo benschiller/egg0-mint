@@ -96,14 +96,16 @@ async function processInscriptionAddress(address) {
         
         for (const tx of transactions) {
             if (tx.vin && tx.vin[0] && tx.vin[0].inner_witnessscript_asm) {
-                if (tx.vin[0].inner_witnessscript_asm.includes(INSCRIPTION_CONTENT)) {
-                    const inscriptionId = `${tx.txid}i0`;
-                    log(`Found inscription: ${inscriptionId}`);
-                    foundInscriptions.push(inscriptionId);
+                const script = tx.vin[0].inner_witnessscript_asm;
+                // Look for exact opcode and full hex within the script
+                if (script.includes('OP_PUSHBYTES_75 2f636f6e74656e742f6330623464373435346430363538336437636632663935303665343334656363336232303464656264353738613738316564303739303931613731663633326930')) {
+                    log(`Found inscription in transaction: ${tx.txid}`);
+                    foundInscriptions.push(`${tx.txid}i0`);
                 }
             }
         }
         
+        log('Found inscriptions:', foundInscriptions);
         return foundInscriptions;
     } catch (error) {
         log('Error processing inscription address:', error);
