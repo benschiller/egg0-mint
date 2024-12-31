@@ -206,13 +206,21 @@ function startWebSocketConnection() {
                 const tx = message['address-transactions'][0];
                 log('Processing transaction:', tx.txid);
                 
-                // Check if this is a new transaction for an address we're tracking
+                // Check for inscriptions in pending transactions
                 for (const [addr, pendingData] of pendingTransactions) {
                     if (pendingData.type === 'batch' && 
                         tx.vin[0]?.inner_witnessscript_asm?.includes('OP_PUSHBYTES_75 2f636f6e74656e742f')) {
-                        log(`Found inscription in transaction: ${tx.txid}`);
+                        // Handle batch inscriptions as before
+                        log(`Found batch inscription in transaction: ${tx.txid}`);
                         pendingData.inscriptionTxid = tx.txid;
-                        log(`Updated inscriptionTxid for address ${addr}`);
+                        log(`Updated inscriptionTxid for batch address ${addr}`);
+                    } else if (pendingData.type === 'direct') {
+                        // For direct, check if this is a descendant transaction with inscription
+                        if (tx.vin[0]?.inner_witnessscript_asm?.includes('OP_PUSHBYTES_75 2f636f6e74656e742f')) {
+                            log(`Found direct inscription in transaction: ${tx.txid}`);
+                            pendingData.inscriptionTxid = tx.txid;
+                            log(`Updated inscriptionTxid for direct address ${addr}`);
+                        }
                     }
                 }
                 
@@ -221,12 +229,11 @@ function startWebSocketConnection() {
                     log(`Found ${result.type} royalty transaction`);
                     log('Storing addresses for confirmation:', result.addresses);
                     
-                    // Store addresses with transaction and type
                     result.addresses.forEach(addr => {
                         pendingTransactions.set(addr, {
                             tx: tx,
                             type: result.type,
-                            inscriptionTxid: result.hasInscription ? tx.txid : null
+                            inscriptionTxid: null  // Always start as null and wait for inscription tx
                         });
                     });
                 }
@@ -239,12 +246,21 @@ function startWebSocketConnection() {
                     
                     for (const [addr, pendingData] of pendingTransactions) {
                         if (pendingData.inscriptionTxid === tx.txid) {
-                            // We found a confirmed inscription transaction
+                            // Only write to database and remove from pending if we found an inscription
                             const inscriptionId = `${tx.txid}i0`;
                             log(`Found confirmed inscription: ${inscriptionId}`);
                             await updateDatabase([inscriptionId]);
                             pendingTransactions.delete(addr);
                             log(`Removed address ${addr} after writing inscription`);
+                        } else if (pendingData.tx.txid === tx.txid) {
+                            // If this is just the royalty payment confirming, check for descendant inscription
+                            if (tx.descendants?.length > 0) {
+                                log(`Royalty payment confirmed with descendants for ${addr}, continuing to monitor`);
+                            } else {
+                                // If no descendants, can remove from monitoring
+                                log(`Royalty payment confirmed with no descendants for ${addr}`);
+                                pendingTransactions.delete(addr);
+                            }
                         }
                     }
                 }
