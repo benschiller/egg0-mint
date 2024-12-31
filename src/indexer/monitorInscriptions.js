@@ -85,32 +85,32 @@ async function getNextInscriptionNumber() {
     return lastNumber + 1;
 }
 
-async function processInscriptionAddress(address) {
+async function processInscriptionAddress(address, pendingData) {
     try {
-        log(`Fetching transactions for potential inscription address: ${address}`);
+        log(`Fetching transactions for address: ${address}`);
         const url = `${MEMPOOL_API_BASE}/address/${address}/txs`;
         const response = await axios.get(url);
         const transactions = response.data;
-        
-        log(`Found ${transactions.length} transactions for address`);
-        const foundInscriptions = [];
-        
+
+        // Look for inscription transaction in address history
         for (const tx of transactions) {
-            if (tx.vin && tx.vin[0] && tx.vin[0].inner_witnessscript_asm) {
-                const script = tx.vin[0].inner_witnessscript_asm;
-                // Look for exact opcode and full hex within the script
-                if (script.includes('OP_PUSHBYTES_75 2f636f6e74656e742f6330623464373435346430363538336437636632663935303665343334656363336232303464656264353738613738316564303739303931613731663633326930')) {
-                    log(`Found inscription in transaction: ${tx.txid}`);
-                    foundInscriptions.push(`${tx.txid}i0`);
+            if (tx.vin[0]?.inner_witnessscript_asm?.includes('OP_PUSHBYTES_75 2f636f6e74656e742f')) {
+                log(`Found inscription in transaction: ${tx.txid} for ${pendingData.type} address`);
+                pendingData.inscriptionTxid = tx.txid;
+                
+                // If transaction is already confirmed, write to DB immediately
+                if (tx.status?.confirmed) {
+                    const inscriptionId = `${tx.txid}i0`;
+                    log(`Writing confirmed ${pendingData.type} inscription: ${inscriptionId}`);
+                    await updateDatabase([inscriptionId]);
+                    pendingTransactions.delete(address);
+                    log(`Removed ${pendingData.type} address ${address} after writing inscription`);
                 }
+                return;
             }
         }
-        
-        log('Found inscriptions:', foundInscriptions);
-        return foundInscriptions;
     } catch (error) {
-        log('Error processing inscription address:', error);
-        return [];
+        log(`Error processing inscription address ${address}:`, error);
     }
 }
 
@@ -202,26 +202,24 @@ function startWebSocketConnection() {
             log('Parsed message:', message);
             
             if (message['address-transactions']) {
-                log('Found address transactions');
                 const tx = message['address-transactions'][0];
                 log('Processing transaction:', tx.txid);
                 
-                // Check if this tx spends from any of our pending recipient addresses
+                // Check if this tx involves any of our pending addresses
                 for (const [addr, pendingData] of pendingTransactions) {
-                    // Check if this transaction spends from our pending address
-                    const spendsFromPending = tx.vin.some(input => 
+                    const addressInvolved = tx.vin.some(input => 
                         input.prevout?.scriptpubkey_address === addr
+                    ) || tx.vout.some(output => 
+                        output.scriptpubkey_address === addr
                     );
                     
-                    if (spendsFromPending && 
-                        tx.vin[0]?.inner_witnessscript_asm?.includes('OP_PUSHBYTES_75 2f636f6e74656e742f')) {
-                        log(`Found inscription spending from ${addr} (${pendingData.type})`);
-                        pendingData.inscriptionTxid = tx.txid;
-                        log(`Updated inscriptionTxid: ${tx.txid}`);
+                    if (addressInvolved) {
+                        // If address is involved, check its transaction history
+                        await processInscriptionAddress(addr, pendingData);
                     }
                 }
                 
-                // Check for new royalty payments
+                // Process royalty payments
                 const result = await processTransaction(tx);
                 if (result) {
                     log(`Found ${result.type} royalty transaction`);
@@ -230,9 +228,11 @@ function startWebSocketConnection() {
                     result.addresses.forEach(addr => {
                         pendingTransactions.set(addr, {
                             tx: tx,
-                            type: result.type,  // Keep batch/direct distinction for business logic
+                            type: result.type,
                             inscriptionTxid: null
                         });
+                        // Check address history immediately
+                        processInscriptionAddress(addr, pendingTransactions.get(addr));
                     });
                 }
             }
@@ -244,9 +244,8 @@ function startWebSocketConnection() {
                     
                     for (const [addr, pendingData] of pendingTransactions) {
                         if (pendingData.inscriptionTxid === tx.txid) {
-                            // Found a confirmed inscription
                             const inscriptionId = `${tx.txid}i0`;
-                            log(`Found confirmed ${pendingData.type} inscription: ${inscriptionId}`);
+                            log(`Writing confirmed ${pendingData.type} inscription: ${inscriptionId}`);
                             await updateDatabase([inscriptionId]);
                             pendingTransactions.delete(addr);
                             log(`Removed ${pendingData.type} address ${addr} after writing inscription`);
