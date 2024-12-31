@@ -245,13 +245,6 @@ function startWebSocketConnection() {
                             await updateDatabase([inscriptionId]);
                             pendingTransactions.delete(addr);
                             log(`Removed address ${addr} after writing inscription`);
-                        } else if (pendingData.tx.txid === tx.txid) {
-                            // Original royalty transaction confirmed
-                            log(`Royalty transaction confirmed for ${addr}`);
-                            if (pendingData.type === 'direct') {
-                                pendingTransactions.delete(addr);
-                                log(`Removed direct address ${addr} with no inscription`);
-                            }
                         }
                     }
                 }
