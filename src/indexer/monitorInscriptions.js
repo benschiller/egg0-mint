@@ -206,34 +206,32 @@ function startWebSocketConnection() {
                 const tx = message['address-transactions'][0];
                 log('Processing transaction:', tx.txid);
                 
-                // Check for inscriptions in pending transactions
+                // Check if this tx spends from any of our pending recipient addresses
                 for (const [addr, pendingData] of pendingTransactions) {
-                    if (pendingData.type === 'batch' && 
+                    // Check if this transaction spends from our pending address
+                    const spendsFromPending = tx.vin.some(input => 
+                        input.prevout?.scriptpubkey_address === addr
+                    );
+                    
+                    if (spendsFromPending && 
                         tx.vin[0]?.inner_witnessscript_asm?.includes('OP_PUSHBYTES_75 2f636f6e74656e742f')) {
-                        // Handle batch inscriptions as before
-                        log(`Found batch inscription in transaction: ${tx.txid}`);
+                        log(`Found inscription spending from ${addr} (${pendingData.type})`);
                         pendingData.inscriptionTxid = tx.txid;
-                        log(`Updated inscriptionTxid for batch address ${addr}`);
-                    } else if (pendingData.type === 'direct') {
-                        // For direct, check if this is a descendant transaction with inscription
-                        if (tx.vin[0]?.inner_witnessscript_asm?.includes('OP_PUSHBYTES_75 2f636f6e74656e742f')) {
-                            log(`Found direct inscription in transaction: ${tx.txid}`);
-                            pendingData.inscriptionTxid = tx.txid;
-                            log(`Updated inscriptionTxid for direct address ${addr}`);
-                        }
+                        log(`Updated inscriptionTxid: ${tx.txid}`);
                     }
                 }
                 
+                // Check for new royalty payments
                 const result = await processTransaction(tx);
                 if (result) {
                     log(`Found ${result.type} royalty transaction`);
-                    log('Storing addresses for confirmation:', result.addresses);
+                    log('Storing recipient addresses for monitoring:', result.addresses);
                     
                     result.addresses.forEach(addr => {
                         pendingTransactions.set(addr, {
                             tx: tx,
-                            type: result.type,
-                            inscriptionTxid: null  // Always start as null and wait for inscription tx
+                            type: result.type,  // Keep batch/direct distinction for business logic
+                            inscriptionTxid: null
                         });
                     });
                 }
@@ -246,21 +244,12 @@ function startWebSocketConnection() {
                     
                     for (const [addr, pendingData] of pendingTransactions) {
                         if (pendingData.inscriptionTxid === tx.txid) {
-                            // Only write to database and remove from pending if we found an inscription
+                            // Found a confirmed inscription
                             const inscriptionId = `${tx.txid}i0`;
-                            log(`Found confirmed inscription: ${inscriptionId}`);
+                            log(`Found confirmed ${pendingData.type} inscription: ${inscriptionId}`);
                             await updateDatabase([inscriptionId]);
                             pendingTransactions.delete(addr);
-                            log(`Removed address ${addr} after writing inscription`);
-                        } else if (pendingData.tx.txid === tx.txid) {
-                            // If this is just the royalty payment confirming, check for descendant inscription
-                            if (tx.descendants?.length > 0) {
-                                log(`Royalty payment confirmed with descendants for ${addr}, continuing to monitor`);
-                            } else {
-                                // If no descendants, can remove from monitoring
-                                log(`Royalty payment confirmed with no descendants for ${addr}`);
-                                pendingTransactions.delete(addr);
-                            }
+                            log(`Removed ${pendingData.type} address ${addr} after writing inscription`);
                         }
                     }
                 }
