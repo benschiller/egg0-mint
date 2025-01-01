@@ -92,13 +92,12 @@ async function processInscriptionAddress(address, pendingData) {
         const response = await axios.get(url);
         const transactions = response.data;
 
-        // Look for inscription transaction in address history
+        // Parse the transactions looking for inscription
         for (const tx of transactions) {
             if (tx.vin[0]?.inner_witnessscript_asm?.includes('OP_PUSHBYTES_75 2f636f6e74656e742f')) {
                 log(`Found inscription in transaction: ${tx.txid} for ${pendingData.type} address`);
                 pendingData.inscriptionTxid = tx.txid;
                 
-                // If transaction is already confirmed, write to DB immediately
                 if (tx.status?.confirmed) {
                     const inscriptionId = `${tx.txid}i0`;
                     log(`Writing confirmed ${pendingData.type} inscription: ${inscriptionId}`);
@@ -205,20 +204,6 @@ function startWebSocketConnection() {
                 const tx = message['address-transactions'][0];
                 log('Processing transaction:', tx.txid);
                 
-                // Check if this tx involves any of our pending addresses
-                for (const [addr, pendingData] of pendingTransactions) {
-                    const addressInvolved = tx.vin.some(input => 
-                        input.prevout?.scriptpubkey_address === addr
-                    ) || tx.vout.some(output => 
-                        output.scriptpubkey_address === addr
-                    );
-                    
-                    if (addressInvolved) {
-                        // If address is involved, check its transaction history
-                        await processInscriptionAddress(addr, pendingData);
-                    }
-                }
-                
                 // Process royalty payments
                 const result = await processTransaction(tx);
                 if (result) {
@@ -231,8 +216,6 @@ function startWebSocketConnection() {
                             type: result.type,
                             inscriptionTxid: null
                         });
-                        // Check address history immediately
-                        processInscriptionAddress(addr, pendingTransactions.get(addr));
                     });
                 }
             }
@@ -242,13 +225,17 @@ function startWebSocketConnection() {
                 if (tx.status.confirmed) {
                     log('Processing confirmed transaction:', tx.txid);
                     
+                    // Check if this confirmed tx involves any of our pending addresses
                     for (const [addr, pendingData] of pendingTransactions) {
-                        if (pendingData.inscriptionTxid === tx.txid) {
-                            const inscriptionId = `${tx.txid}i0`;
-                            log(`Writing confirmed ${pendingData.type} inscription: ${inscriptionId}`);
-                            await updateDatabase([inscriptionId]);
-                            pendingTransactions.delete(addr);
-                            log(`Removed ${pendingData.type} address ${addr} after writing inscription`);
+                        const addressInvolved = tx.vin.some(input => 
+                            input.prevout?.scriptpubkey_address === addr
+                        ) || tx.vout.some(output => 
+                            output.scriptpubkey_address === addr
+                        );
+                        
+                        if (addressInvolved) {
+                            // Make sure we await the API call
+                            await processInscriptionAddress(addr, pendingData);
                         }
                     }
                 }
