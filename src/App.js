@@ -97,7 +97,7 @@ function App() {
       <div className="nav-container">
         <div className="nav-title">
           <h1>Mint egg0</h1>
-          <h3>Inscribe BRC-420 directly from your wallet</h3>
+          <h3>Inscribe BRC-420 directly from Xverse or <a href="https://brc420.io/tokens/eb3d72050bfd7bfddb1c230a9646855a8a9fcbfa4db548d43e6c15392431cf36i0" style={{ color: '#F4900C' }} target="_blank" rel="noopener noreferrer">other wallets</a></h3>
         </div>
 
         {!isMobileDevice && (
