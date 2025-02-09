@@ -382,3 +382,37 @@
   background: #F4900C;
   transition: width 0.3s ease;
 }
+
+.value-props {
+  max-width: 800px;
+  margin: 20px auto;
+  padding: 0 20px;
+}
+
+.value-prop {
+  display: flex;
+  align-items: center;
+  margin: 12px 0;
+  color: #fff;
+  font-size: 16px;
+}
+
+.value-prop .emoji {
+  margin-right: 12px;
+  font-size: 20px;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .value-props {
+    padding: 0 15px;
+  }
+  
+  .value-prop {
+    font-size: 14px;
+  }
+  
+  .value-prop .emoji {
+    font-size: 18px;
+  }
+}

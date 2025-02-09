@@ -59,6 +59,27 @@ const MobileNotice = memo(() => (
   </div>
 ));
 
+// Add this new component near the top with other component definitions
+const ValueProps = memo(() => (
+  <div className="mint-summary">
+    <h2>Why Mint egg0?</h2>
+    <div className="value-props">
+      <div className="value-prop">
+        <span className="emoji">🔥</span>
+        <span>Multiply Your POINTS with Every Parcel</span>
+      </div>
+      <div className="value-prop">
+        <span className="emoji">🟧</span>
+        <span>Get a Free Parcel on Bitmap #848284</span>
+      </div>
+      <div className="value-prop">
+        <span className="emoji">🆓</span>
+        <span>Forever Free Fees on the First Marketplace Built for Bitmap</span>
+      </div>
+    </div>
+  </div>
+));
+
 function App() {
   const [isWalletConnected, setIsWalletConnected] = useState(false);
   const [payloadSummary, setPayloadSummary] = useState({});
@@ -96,8 +117,8 @@ function App() {
     <div className="app-container">
       <div className="nav-container">
         <div className="nav-title">
-          <h1>Mint egg0</h1>
-          <h3>Inscribe BRC-420 directly from Xverse or <a href="https://brc420.io/tokens/eb3d72050bfd7bfddb1c230a9646855a8a9fcbfa4db548d43e6c15392431cf36i0" style={{ color: '#F4900C' }} target="_blank" rel="noopener noreferrer">other wallets</a></h3>
+          <h1>Mint egg0 by Ben Schiller</h1>
+          <h3>🥚 Inscribe BRC-420 directly from Xverse or <a href="https://brc420.io/tokens/eb3d72050bfd7bfddb1c230a9646855a8a9fcbfa4db548d43e6c15392431cf36i0" style={{ color: '#F4900C' }} target="_blank" rel="noopener noreferrer">other wallets</a></h3>
         </div>
 
         {!isMobileDevice && (
@@ -126,8 +147,8 @@ function App() {
             <MobileNotice />
           </div>
         ) : (
-          !isWalletConnected ? (
-            <div className="preview-container">
+          <div className="two-column-layout">
+            <div className="column">
               <PreviewSection 
                 isWalletConnected={isWalletConnected} 
                 iframeKey={iframeKey}
@@ -135,18 +156,8 @@ function App() {
                 loading={loading}
               />
             </div>
-          ) : (
-            <div className="two-column-layout">
-              <div className="column">
-                <PreviewSection 
-                  isWalletConnected={isWalletConnected} 
-                  iframeKey={iframeKey}
-                  supply={supply}
-                  loading={loading}
-                />
-              </div>
-
-              <div className="column">
+            <div className="column">
+              {isWalletConnected ? (
                 <div className="mint-summary">
                   <h2>Mint Summary</h2>
                   <div className="inscription-details">
@@ -161,9 +172,11 @@ function App() {
                     onTransactionComplete={handleTransactionComplete}
                   />
                 </div>
-              </div>
+              ) : (
+                <ValueProps />
+              )}
             </div>
-          )
+          </div>
         )}
       </div>
     </div>

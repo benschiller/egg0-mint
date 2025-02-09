@@ -1,5 +1,5 @@
 INSERT INTO inscriptions (id, meta) 
 VALUES (
-  '323acf918cfcbf0154a508a61587cd76e3ba88077fc9f183e0870d655bd46743i0',
-  '{"name": "egg0 #780", "high_res_img_url": "https://i.imgur.com/shyilcA.gif"}'::jsonb
+  '935191c33a2f97021be7d57ef4e6595dab7abf85c532262632327f290e2f8d13i0',
+  '{"name": "egg0 #793", "high_res_img_url": "https://i.imgur.com/shyilcA.gif"}'::jsonb
 );

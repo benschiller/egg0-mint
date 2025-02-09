@@ -79,7 +79,7 @@ function InscriptionForm({ onPayloadChange, onTransactionComplete }) {
       </div>
       <p>
         <button type="submit" className="create-inscription-button">
-          Inscribe
+          Mint
         </button>
       </p>
       {status && <p>{status}</p>}
