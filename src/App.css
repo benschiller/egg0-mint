@@ -416,3 +416,25 @@
     font-size: 18px;
   }
 }
+
+.built-by {
+  margin-top: 2rem;
+  text-align: center;
+  color: #8A8F98;
+  font-size: 14px;
+}
+
+.built-by a {
+  text-decoration: none;
+}
+
+.built-by a:hover {
+  text-decoration: underline;
+}
+
+/* Update mobile styles */
+@media (max-width: 768px) {
+  .footer {
+    padding: 1.5rem 0;
+  }
+}

@@ -59,14 +59,14 @@ const MobileNotice = memo(() => (
   </div>
 ));
 
-// Add this new component near the top with other component definitions
+// Update ValueProps component to include built by text
 const ValueProps = memo(() => (
   <div className="mint-summary">
     <h2>Why Mint egg0?</h2>
     <div className="value-props">
       <div className="value-prop">
         <span className="emoji">🔥</span>
-        <span>Multiply Your POINTS with Every Parcel</span>
+        <span>Multiply Your POINTS with <a href="https://verb.markets/parcel" target="_blank" rel="noopener noreferrer" style={{ color: '#F4900C' }}>Every Parcel</a></span>
       </div>
       <div className="value-prop">
         <span className="emoji">🟧</span>
@@ -74,8 +74,18 @@ const ValueProps = memo(() => (
       </div>
       <div className="value-prop">
         <span className="emoji">🆓</span>
-        <span>Forever Free Fees on the First Marketplace Built for Bitmap</span>
+        <span>Forever Free Fees on the <a href="https://verb.markets/parcel" target="_blank" rel="noopener noreferrer" style={{ color: '#F4900C' }}>First Marketplace</a> Built for Bitmap</span>
       </div>
+    </div>
+    <div className="built-by">
+      Built by <a 
+        href="https://x.com/benschiller_xyz/status/1886998694798483474" 
+        target="_blank" 
+        rel="noopener noreferrer"
+        style={{ color: '#F4900C' }}
+      >
+        @benschiller_xyz
+      </a>
     </div>
   </div>
 ));
