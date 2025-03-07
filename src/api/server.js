@@ -9,10 +9,11 @@ app.use(cors());
 // Use database config from config.js
 const pool = new Pool(config.DB_CONFIG);
 
+// Only endpoint is to get the current supply count
 app.get('/api/supply', async (req, res) => {
     try {
         const result = await pool.query('SELECT COUNT(*) FROM inscriptions');
-        res.json({ total: result.rows[0].count });
+        res.json({ total: result.rows[0].count, mintComplete: true });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -20,5 +21,5 @@ app.get('/api/supply', async (req, res) => {
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+    console.log(`API Server running on port ${PORT} - Mint is complete, only serving supply count`);
 }); 

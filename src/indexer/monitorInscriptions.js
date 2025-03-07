@@ -13,267 +13,43 @@ const MEMPOOL_API_BASE = 'https://mempool.space/api';
 // Database connection using config
 const pool = new Pool(config.DB_CONFIG);
 
-// Add pending transactions map
-const pendingTransactions = new Map();
+// MINT IS COMPLETE - No new inscriptions will be processed
+console.log('MINT COMPLETE: Indexer is running in read-only mode. No new inscriptions will be processed.');
 
-// Helper functions
-function isRoyaltyAmount(amount) {
-    return amount % 40000 === 0;
-}
-
-async function processTransaction(tx) {
+// Helper functions for querying existing data
+async function getInscriptionCount() {
     try {
-        // Get input addresses
-        const inputAddresses = new Set();
-        tx.vin.forEach(input => {
-            if (input.prevout && input.prevout.scriptpubkey_address) {
-                inputAddresses.add(input.prevout.scriptpubkey_address);
-            }
-        });
-
-        // Find royalty output
-        const royaltyOutput = tx.vout.find(out => 
-            out.scriptpubkey_address === ROYALTY_ADDRESS && 
-            isRoyaltyAmount(out.value)
-        );
-
-        if (!royaltyOutput) return null;
-
-        // Find change address
-        const changeOutput = tx.vout.find(out => 
-            inputAddresses.has(out.scriptpubkey_address)
-        );
-
-        if (!changeOutput) return null;
-
-        // Check for platform fee (batch royalty)
-        const hasPlatformFee = tx.vout.some(out => 
-            out.scriptpubkey_address === PLATFORM_FEE_ADDRESS
-        );
-
-        // Get potential inscription addresses
-        const inscriptionAddresses = tx.vout
-            .filter(out => 
-                out.scriptpubkey_address !== ROYALTY_ADDRESS &&
-                out.scriptpubkey_address !== PLATFORM_FEE_ADDRESS &&
-                !inputAddresses.has(out.scriptpubkey_address)
-            )
-            .map(out => out.scriptpubkey_address);
-
-        return {
-            type: hasPlatformFee ? 'batch' : 'direct',
-            addresses: inscriptionAddresses,
-            hasInscription: tx.vin[0]?.inner_witnessscript_asm?.includes('OP_PUSHBYTES_75 2f636f6e74656e742f6330623464373435346430363538336437636632663935303665343334656363336232303464656264353738613738316564303739303931613731663633326930')
-        };
+        const result = await pool.query('SELECT COUNT(*) FROM inscriptions');
+        return parseInt(result.rows[0].count, 10);
     } catch (error) {
-        console.error('Error processing transaction:', error);
-        return null;
+        console.error('Error getting inscription count:', error);
+        return 0;
     }
 }
 
-async function getNextInscriptionNumber() {
-    const result = await pool.query(`
-        SELECT meta->>'name' as name 
-        FROM inscriptions 
-        ORDER BY (regexp_replace(meta->>'name', '\\D', '', 'g'))::integer DESC 
-        LIMIT 1
-    `);
-    
-    if (result.rows.length === 0) return 1;
-    
-    const lastNumber = parseInt(result.rows[0].name.replace(/\D/g, ''));
-    return lastNumber + 1;
-}
-
-async function processInscriptionAddress(address, pendingData) {
+// Log the current state
+async function logCurrentState() {
     try {
-        log(`Fetching transactions for address: ${address}`);
-        const url = `${MEMPOOL_API_BASE}/address/${address}/txs`;
-        const response = await axios.get(url);
-        const transactions = response.data;
-
-        // Parse the transactions looking for inscription
-        for (const tx of transactions) {
-            if (tx.vin[0]?.inner_witnessscript_asm?.includes('OP_PUSHBYTES_75 2f636f6e74656e742f')) {
-                log(`Found inscription in transaction: ${tx.txid} for ${pendingData.type} address`);
-                pendingData.inscriptionTxid = tx.txid;
-                
-                if (tx.status?.confirmed) {
-                    const inscriptionId = `${tx.txid}i0`;
-                    log(`Writing confirmed ${pendingData.type} inscription: ${inscriptionId}`);
-                    await updateDatabase([inscriptionId]);
-                    pendingTransactions.delete(address);
-                    log(`Removed ${pendingData.type} address ${address} after writing inscription`);
-                }
-                return;
-            }
-        }
+        const count = await getInscriptionCount();
+        console.log(`Current inscription count: ${count}/888`);
+        console.log('Mint is complete. No new inscriptions will be processed.');
+        
+        // Schedule the next log
+        setTimeout(logCurrentState, 60 * 60 * 1000); // Log once per hour
     } catch (error) {
-        log(`Error processing inscription address ${address}:`, error);
+        console.error('Error logging current state:', error);
     }
 }
 
-async function updateDatabase(inscriptionIds) {
+// Start the monitoring process
+async function start() {
     try {
-        for (const id of inscriptionIds) {
-            log(`Processing inscription ID: ${id}`);
-
-            // Check if inscription already exists
-            const exists = await pool.query(
-                'SELECT id FROM inscriptions WHERE id = $1',
-                [id]
-            );
-            
-            if (exists.rows.length > 0) {
-                log(`Inscription ${id} already exists, skipping`);
-                continue;
-            }
-
-            // Get fresh number before insert
-            const nextNumber = await getNextInscriptionNumber();
-            log(`Next inscription number: ${nextNumber}`);
-
-            // Prepare the meta data
-            const metaData = {
-                name: `egg0 #${nextNumber}`,
-                high_res_img_url: IMAGE_URL
-            };
-            log(`Meta data for inscription ${id}:`, metaData);
-
-            // Construct the SQL query
-            const queryText = 'INSERT INTO inscriptions (id, meta) VALUES ($1, $2)';
-            const queryValues = [id, metaData];
-            log(`Executing SQL query: ${queryText}`);
-            log(`Query values:`, queryValues);
-
-            // Execute the query
-            await pool.query(queryText, queryValues);
-            log(`Successfully inserted inscription ${id} as egg0 #${nextNumber}`);
-        }
+        // Log the current state
+        await logCurrentState();
     } catch (error) {
-        log('Error updating database:', error);
+        console.error('Error starting monitoring process:', error);
     }
 }
 
-// Add logging function
-function log(message, data = null) {
-    const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] ${message}`);
-    if (data) {
-        console.log(JSON.stringify(data, null, 2));
-    }
-}
-
-// Test database connection before starting WebSocket
-pool.query('SELECT COUNT(*) FROM inscriptions')
-    .then(result => {
-        console.log('Database connected, current inscription count:', result.rows[0].count);
-        startWebSocketConnection();
-    })
-    .catch(err => {
-        console.error('Database connection failed:', err);
-        process.exit(1);
-    });
-
-// Move WebSocket setup into a function
-function startWebSocketConnection() {
-    const ws = new WebSocket('wss://mempool.space/api/v1/ws');
-
-    ws.on('open', () => {
-        log('WebSocket connected');
-        const trackMsg = { 'track-address': ROYALTY_ADDRESS };
-        log('Sending track message', trackMsg);
-        ws.send(JSON.stringify(trackMsg));
-    });
-
-    ws.on('ping', () => {
-        log('Received ping');
-    });
-
-    ws.on('pong', () => {
-        log('Received pong');
-    });
-
-    ws.on('message', async (data) => {
-        try {
-            const message = JSON.parse(data);
-            log('Raw message received:', data.toString());
-            log('Parsed message:', message);
-            
-            if (message['address-transactions']) {
-                const tx = message['address-transactions'][0];
-                log('Processing transaction:', tx.txid);
-                
-                // Process royalty payments
-                const result = await processTransaction(tx);
-                if (result) {
-                    log(`Found ${result.type} royalty transaction`);
-                    log('Storing recipient addresses for monitoring:', result.addresses);
-                    
-                    result.addresses.forEach(addr => {
-                        pendingTransactions.set(addr, {
-                            tx: tx,
-                            type: result.type,
-                            inscriptionTxid: null
-                        });
-                    });
-                }
-            }
-
-            if (message['block-transactions']) {
-                const tx = message['block-transactions'][0];
-                if (tx.status.confirmed) {
-                    log('Processing confirmed transaction:', tx.txid);
-                    
-                    // Check if this confirmed tx involves any of our pending addresses
-                    for (const [addr, pendingData] of pendingTransactions) {
-                        const addressInvolved = tx.vin.some(input => 
-                            input.prevout?.scriptpubkey_address === addr
-                        ) || tx.vout.some(output => 
-                            output.scriptpubkey_address === addr
-                        );
-                        
-                        if (addressInvolved) {
-                            // Make sure we await the API call
-                            await processInscriptionAddress(addr, pendingData);
-                        }
-                    }
-                }
-            }
-        } catch (error) {
-            log('Error processing message:', error);
-        }
-    });
-
-    ws.on('error', (error) => {
-        log('WebSocket error', error);
-        if (error.code === 'ECONNRESET') {
-            log('Connection reset by peer detected');
-        }
-    });
-
-    ws.on('close', () => {
-        log('WebSocket connection closed');
-        clearInterval(heartbeat);
-        // Reconnect after a delay
-        setTimeout(() => {
-            log('Attempting to reconnect WebSocket...');
-            startWebSocketConnection();
-        }, 5000);  // Reconnect after 5 seconds
-    });
-
-    // Add heartbeat to keep connection alive
-    const heartbeat = setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) {
-            ws.ping();
-        }
-    }, 60000);  // Increase to 60 seconds
-
-    return ws;
-}
-
-// Handle process termination
-process.on('SIGINT', () => {
-    console.log('Shutting down...');
-    pool.end().then(() => process.exit(0));
-});
+// Start the process
+start();

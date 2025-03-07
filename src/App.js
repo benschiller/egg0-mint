@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
-import WalletConnect from './components/WalletConnect';
-import InscriptionForm from './components/InscriptionForm';
-import PayloadSummary from './components/PayloadSummary';
 import useCollectionSupply from './hooks/useCollectionSupply';
+import Confetti from 'react-confetti';
 import './App.css';
 
 // Mobile detection helper
@@ -31,8 +29,8 @@ const MintProgress = memo(({ current, total, loading }) => {
 });
 
 // Update PreviewSection to accept supply data
-const PreviewSection = memo(({ isWalletConnected, iframeKey, supply, loading }) => (
-  <div className={`preview-section ${isWalletConnected ? 'connected' : ''}`}>
+const PreviewSection = memo(({ iframeKey, supply, loading }) => (
+  <div className="preview-section connected">
     <MintProgress current={supply} total={888} loading={loading} />
     <div className="preview-frame">
       <iframe
@@ -50,31 +48,22 @@ const PreviewSection = memo(({ isWalletConnected, iframeKey, supply, loading }) 
   </div>
 ));
 
-// Mobile notice component
-const MobileNotice = memo(() => (
-  <div className="mobile-notice">
-    <h2>Desktop Required</h2>
-    <p>For the best minting experience and wallet compatibility, please use a desktop browser with Xverse wallet.</p>
-    <p>Feel free to explore the preview on mobile!</p>
-  </div>
-));
-
-// Update ValueProps component to include built by text
-const ValueProps = memo(() => (
+// Congratulations component
+const CongratulationsMessage = memo(() => (
   <div className="mint-summary">
-    <h2>Why Mint egg0?</h2>
+    <h2>Mint Complete!</h2>
     <div className="value-props">
       <div className="value-prop">
-        <span className="emoji">🔥</span>
-        <span>Multiply Your POINTS with <a href="https://verb.markets/parcel" target="_blank" rel="noopener noreferrer" style={{ color: '#F4900C' }}>Every Parcel</a></span>
+        <span className="emoji">🎉</span>
+        <span>All 888 egg0 NFTs have been successfully minted!</span>
       </div>
       <div className="value-prop">
-        <span className="emoji">🟧</span>
-        <span>Get a Free Parcel on Bitmap #848284</span>
+        <span className="emoji">🙏</span>
+        <span>Thank you to everyone who participated in the mint</span>
       </div>
       <div className="value-prop">
-        <span className="emoji">🆓</span>
-        <span>Forever Free Fees on the <a href="https://verb.markets/parcel" target="_blank" rel="noopener noreferrer" style={{ color: '#F4900C' }}>First Marketplace</a> Built for Bitmap</span>
+        <span className="emoji">🥚</span>
+        <span>View the collection on <a href="https://magiceden.io/ordinals/marketplace/egg0" target="_blank" rel="noopener noreferrer" style={{ color: '#F4900C' }}>Magic Eden</a></span>
       </div>
     </div>
     <div className="built-by">
@@ -91,11 +80,10 @@ const ValueProps = memo(() => (
 ));
 
 function App() {
-  const [isWalletConnected, setIsWalletConnected] = useState(false);
-  const [payloadSummary, setPayloadSummary] = useState({});
   const [iframeKey, setIframeKey] = useState(0);
   const isMobileDevice = isMobile();
   const { supply, loading } = useCollectionSupply();
+  const [confettiPieces, setConfettiPieces] = useState(isMobileDevice ? 200 : 500);
 
   const refreshIframe = useCallback(() => {
     setIframeKey(prev => prev + 1);
@@ -113,78 +101,70 @@ function App() {
 
     window.addEventListener('resize', handleResize, { passive: true });
     
+    // Start fading out confetti after 4 seconds
+    const fadeStartTimeout = setTimeout(() => {
+      // Gradually reduce the number of confetti pieces
+      const fadeInterval = setInterval(() => {
+        setConfettiPieces(prev => {
+          const newValue = prev - (isMobileDevice ? 10 : 25);
+          return newValue <= 0 ? 0 : newValue;
+        });
+      }, 200); // Reduce every 200ms
+      
+      // Clear the interval after 5 seconds (total animation time: 9 seconds)
+      setTimeout(() => {
+        clearInterval(fadeInterval);
+        setConfettiPieces(0);
+      }, 5000);
+    }, 4000);
+    
     return () => {
       window.removeEventListener('resize', handleResize);
       clearTimeout(timeoutId);
+      clearTimeout(fadeStartTimeout);
     };
-  }, [refreshIframe]);
-
-  const handleTransactionComplete = (commitId, revealId) => {
-    console.log('Transaction completed:', { commitId, revealId });
-  };
+  }, [refreshIframe, isMobileDevice]);
 
   return (
     <div className="app-container">
+      {confettiPieces > 0 && (
+        <Confetti
+          width={window.innerWidth}
+          height={window.innerHeight}
+          recycle={false}
+          numberOfPieces={confettiPieces}
+          gravity={0.2}
+          colors={['#F4900C', '#FFD700', '#FFFFFF', '#87CEEB', '#FF6347']}
+        />
+      )}
       <div className="nav-container">
         <div className="nav-title">
-          <h1>Mint egg0 by Ben Schiller</h1>
-          <h3>🥚 Inscribe BRC-420 directly from Xverse or <a href="https://brc420.io/tokens/eb3d72050bfd7bfddb1c230a9646855a8a9fcbfa4db548d43e6c15392431cf36i0" style={{ color: '#F4900C' }} target="_blank" rel="noopener noreferrer">other wallets</a></h3>
+          <h1>egg0 by Ben Schiller</h1>
+          <h3>🥚 All 888 NFTs have been successfully minted!</h3>
         </div>
-
-        {!isMobileDevice && (
-          <WalletConnect 
-            onConnected={() => {
-              refreshIframe();
-              setIsWalletConnected(true);
-            }}
-            onDisconnected={() => {
-              refreshIframe();
-              setIsWalletConnected(false);
-            }} 
-          />
-        )}
       </div>
 
       <div className="main-content">
         {isMobileDevice ? (
           <div className="mobile-layout">
             <PreviewSection 
-              isWalletConnected={false} 
               iframeKey={iframeKey}
               supply={supply}
               loading={loading}
             />
-            <MobileNotice />
+            <CongratulationsMessage />
           </div>
         ) : (
           <div className="two-column-layout">
             <div className="column">
               <PreviewSection 
-                isWalletConnected={isWalletConnected} 
                 iframeKey={iframeKey}
                 supply={supply}
                 loading={loading}
               />
             </div>
             <div className="column">
-              {isWalletConnected ? (
-                <div className="mint-summary">
-                  <h2>Mint Summary</h2>
-                  <div className="inscription-details">
-                    <h3>Inscription Details</h3>
-                    <div className="inscription-details-content">
-                      <PayloadSummary payload={payloadSummary} />
-                    </div>
-                  </div>
-
-                  <InscriptionForm 
-                    onPayloadChange={setPayloadSummary} 
-                    onTransactionComplete={handleTransactionComplete}
-                  />
-                </div>
-              ) : (
-                <ValueProps />
-              )}
+              <CongratulationsMessage />
             </div>
           </div>
         )}
